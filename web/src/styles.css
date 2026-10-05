@@ -1,3 +1,12 @@
+@font-face {
+  font-family: "Year of the Camel";
+  src: url("/fonts/TheYearofTheCamel-Bold.woff2") format("woff2");
+  /* Only a bold cut exists; map every weight to it so nothing is faux-bolded. */
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --bg: #f6f7f9;
   --bg-elev: #ffffff;
@@ -18,6 +27,7 @@
   --shadow: 0 1px 2px rgb(16 24 40 / 0.06), 0 4px 16px rgb(16 24 40 / 0.06);
   --radius: 14px;
   --font: "IBM Plex Sans Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --display: "Year of the Camel", var(--font);
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   color-scheme: light;
 }
@@ -88,6 +98,13 @@ button, input { font: inherit; color: inherit; }
 svg { width: 1.15em; height: 1.15em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 [hidden] { display: none !important; }
 .mono { font-family: var(--mono); }
+
+/* Display font: headings, labels and controls. Body copy stays in Plex for readability. */
+.brand, .hero h1, .how-item h3, .how-num, .btn, .icon-btn, .tab, .stat-num, .stat-label,
+.run-title, .badge, .result-name, .result-icon, .menu-list button, .toast, .check {
+  font-family: var(--display);
+  font-weight: 400;
+}
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -205,7 +222,7 @@ main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 16px;
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .stat { background: var(--bg-sunk); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; }
 .stat-num { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
-.stat-label { color: var(--muted); font-size: 0.85rem; }
+.stat-label { color: var(--muted); font-size: 0.9rem; }
 .stat-found .stat-num { color: var(--found); }
 
 .toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin: 20px 0 14px; }
@@ -274,7 +291,7 @@ main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 0 16px;
 .result-name { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .result-link { display: block; font-family: var(--mono); font-size: 0.78rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; text-decoration: none; }
 a.result-link:hover { color: var(--accent); text-decoration: underline; }
-.badge { flex-shrink: 0; font-size: 0.75rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
+.badge { flex-shrink: 0; font-size: 0.8rem; font-weight: 600; padding: 3px 9px; border-radius: 99px; }
 .badge.claimed { background: var(--found-soft); color: var(--found); }
 .badge.available { background: var(--none-soft); color: var(--none); }
 .badge.error { background: var(--warn-soft); color: var(--warn); }
