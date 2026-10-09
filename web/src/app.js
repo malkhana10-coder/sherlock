@@ -51,6 +51,12 @@ const I18N = {
     statusIllegal: "اسم غير صالح",
     statusTimeout: "انتهت المهلة",
     version: "الإصدار",
+    featuredTitle: "المنصات الأكثر استخدامًا",
+    allSitesTitle: "كل المواقع",
+    checking: "جارٍ الفحص",
+    manualCheck: "تحقق يدويًا",
+    openProfile: "فتح الحساب",
+    manualHint: "لا يمكن فحص هذه المنصة تلقائيًا، افتح الرابط للتأكد",
   },
   en: {
     pageTitle: "Sherlock — Find accounts by username",
@@ -98,6 +104,12 @@ const I18N = {
     statusIllegal: "Invalid name",
     statusTimeout: "Timed out",
     version: "Version",
+    featuredTitle: "Most used platforms",
+    allSitesTitle: "All sites",
+    checking: "Checking",
+    manualCheck: "Check manually",
+    openProfile: "Open profile",
+    manualHint: "This platform can't be checked automatically; open the link to verify",
   },
 };
 
@@ -125,6 +137,7 @@ const els = {
   exportBtn: $("#export-btn"),
   exportMenu: $("#export-menu"),
   results: $("#results"),
+  featured: $("#featured"),
   empty: $("#empty"),
   toast: $("#toast"),
   langToggle: $("#lang-toggle"),
@@ -135,6 +148,7 @@ const els = {
 const state = {
   lang: "ar",
   sites: [],
+  featured: [],
   version: "",
   run: null,
   filter: "claimed",
@@ -175,6 +189,7 @@ function applyLang(lang) {
     updateStats();
     updateMeta();
     renderResults();
+    renderFeatured();
   }
   store("sherlock.lang", lang);
 }
@@ -200,8 +215,10 @@ function classify(result) {
 }
 
 function selectedSites() {
+  // Featured platforms are always checked, even if flagged as unreliable.
+  const featured = new Set(state.featured.map((f) => f.site).filter(Boolean));
   return state.sites.filter(
-    (s) => (els.nsfw.checked || !s.nsfw) && (els.excluded.checked || !s.excluded)
+    (s) => featured.has(s.name) || ((els.nsfw.checked || !s.nsfw) && (els.excluded.checked || !s.excluded))
   );
 }
 
@@ -242,8 +259,13 @@ async function startSearch(username) {
   };
   state.run = run;
 
-  // Shuffle so slow sites don't cluster in one batch, then batch.
-  const names = sites.map((s) => s.name).sort(() => Math.random() - 0.5);
+  // Featured platforms go first so their section fills in quickly; shuffle the
+  // rest so slow sites don't cluster in one batch.
+  const featured = new Set(state.featured.map((f) => f.site).filter(Boolean));
+  const names = [
+    ...sites.filter((s) => featured.has(s.name)).map((s) => s.name),
+    ...sites.filter((s) => !featured.has(s.name)).map((s) => s.name).sort(() => Math.random() - 0.5),
+  ];
   const batches = [];
   for (let i = 0; i < names.length; i += BATCH_SIZE) batches.push(names.slice(i, i + BATCH_SIZE));
 
@@ -252,6 +274,7 @@ async function startSearch(username) {
   els.run.classList.remove("done");
   els.runUser.textContent = username;
   els.results.replaceChildren();
+  renderFeatured();
   setFilter("claimed");
   els.stopBtn.hidden = false;
   updateSearchButton();
@@ -278,6 +301,7 @@ async function startSearch(username) {
         run.counts[item.group]++;
         appendResult(item);
       }
+      renderFeatured();
       updateStats();
     }
   };
@@ -299,6 +323,7 @@ function finishRun(run, stopped) {
   updateStats();
   updateMeta();
   renderResults();
+  renderFeatured();
 }
 
 function updateSearchButton() {
@@ -407,6 +432,68 @@ function resultNode(item) {
 
   li.append(icon, body, badge);
   return li;
+}
+
+function featuredState(entry, run) {
+  const profile = entry.url.split("{}").join(encodeURIComponent(run.username));
+  if (!entry.site) return { group: "error", label: t("manualCheck"), link: profile, hint: t("manualHint") };
+  const result = run.results.get(entry.site);
+  if (!result) {
+    if (run.finished) return { group: "error", label: t("manualCheck"), link: profile };
+    return { group: "pending", label: t("checking"), link: profile };
+  }
+  if (result.status === "illegal") return { group: "available", label: t("statusIllegal"), link: "" };
+  if (result.group === "error") {
+    return { group: "error", label: t("manualCheck"), link: profile, hint: t("manualHint") };
+  }
+  return { group: result.group, label: statusLabel(result), link: result.url_user || profile };
+}
+
+function renderFeatured() {
+  const run = state.run;
+  if (!run) return;
+  const nodes = state.featured.map((entry) => {
+    const info = featuredState(entry, run);
+    const li = document.createElement("li");
+    li.className = `feat ${info.group}`;
+
+    const icon = document.createElement("span");
+    icon.className = "result-icon";
+    icon.textContent = entry.en[0];
+    const host = hostname(entry.main);
+    if (host) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      img.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+      img.addEventListener("load", () => icon.replaceChildren(img), { once: true });
+    }
+
+    const body = document.createElement("div");
+    body.className = "result-body";
+    const name = document.createElement("span");
+    name.className = "result-name";
+    name.textContent = entry[state.lang] || entry.en;
+    const badge = document.createElement("span");
+    badge.className = `badge ${info.group}`;
+    badge.textContent = info.label;
+    if (info.hint) badge.title = info.hint;
+    body.append(name, badge);
+    li.append(icon, body);
+
+    if (info.link) {
+      const a = document.createElement("a");
+      a.className = "feat-link";
+      a.href = info.link;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.setAttribute("aria-label", `${t("openProfile")}: ${name.textContent}`);
+      a.title = t("openProfile");
+      li.append(a);
+    }
+    return li;
+  });
+  els.featured.replaceChildren(...nodes);
 }
 
 function matches(item) {
@@ -566,6 +653,7 @@ async function init() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     state.sites = data.sites;
+    state.featured = data.featured || [];
     state.version = data.version;
     els.version.textContent = `${t("version")} ${data.version}`;
   } catch {
