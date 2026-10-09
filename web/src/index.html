@@ -34,6 +34,17 @@
 
   <main>
     <section class="hero">
+      <div class="modes" role="tablist">
+        <button type="button" role="tab" class="mode active" data-mode="username" aria-selected="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+          <span data-i18n="modeUsername">اسم المستخدم</span>
+        </button>
+        <button type="button" role="tab" class="mode" data-mode="image" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg>
+          <span data-i18n="modeImage">البحث العكسي عن صورة</span>
+        </button>
+      </div>
+      <div id="username-panel">
       <h1 data-i18n="heroTitle">اعثر على أي حساب باسم المستخدم</h1>
       <p class="lead" data-i18n="heroLead">ابحث عن اسم مستخدم واحد في أكثر من 400 موقع وشبكة اجتماعية دفعة واحدة.</p>
 
@@ -54,6 +65,47 @@
           <label class="check"><input type="checkbox" id="opt-excluded"><span data-i18n="optExcluded">تضمين المواقع غير الموثوقة</span></label>
         </div>
       </form>
+      </div>
+
+      <div id="image-panel" hidden>
+        <h1 data-i18n="imageTitle">أين نُشرت هذه الصورة؟</h1>
+        <p class="lead" data-i18n="imageLead">اكتشف الحسابات التي تستخدم صورة معيّنة، مثل صور عملائك أو صورك الشخصية.</p>
+
+        <form id="image-form" class="search" autocomplete="off" novalidate>
+          <div class="search-box">
+            <svg class="at" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>
+            <input id="image-url" type="url" spellcheck="false" dir="ltr"
+                   data-i18n-placeholder="imageUrlPlaceholder" placeholder="الصق رابط الصورة">
+            <button type="submit" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <span data-i18n="search">ابحث</span>
+            </button>
+          </div>
+          <p class="form-error" id="image-error" role="alert" hidden></p>
+        </form>
+
+        <p class="or"><span data-i18n="or">أو</span></p>
+
+        <label class="dropzone" id="dropzone" for="image-file">
+          <input type="file" id="image-file" accept="image/*" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+          <span data-i18n="dropHint">اختر صورة من جهازك أو اسحبها هنا</span>
+        </label>
+
+        <div class="image-result" id="image-result" hidden>
+          <img id="image-preview" alt="">
+          <div class="image-result-body">
+            <p class="image-note" id="image-note"></p>
+            <div class="engines" id="engines"></div>
+            <ul class="tips">
+              <li data-i18n="tipMulti">ابحث في أكثر من محرك؛ كل محرك يجد نتائج مختلفة.</li>
+              <li data-i18n="tipTineye">TinEye يرتّب النتائج حسب أقدم ظهور للصورة، وهذا مفيد لإثبات أسبقية النشر.</li>
+              <li data-i18n="tipEvidence">وثّق كل نتيجة (رابط + لقطة شاشة + تاريخ) قبل التواصل مع المنصة، فقد يُحذف الحساب.</li>
+            </ul>
+          </div>
+        </div>
+        <p class="privacy-note" data-i18n="imagePrivacy">لا تُرفع الصورة إلى خادمنا؛ تُفتح مباشرة في محرك البحث الذي تختاره.</p>
+      </div>
     </section>
 
     <section id="run" class="run" hidden aria-live="polite">

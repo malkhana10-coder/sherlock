@@ -52,6 +52,23 @@ const I18N = {
     statusTimeout: "انتهت المهلة",
     version: "الإصدار",
     featuredTitle: "المنصات الأكثر استخدامًا",
+    modeUsername: "اسم المستخدم",
+    modeImage: "البحث العكسي عن صورة",
+    imageTitle: "أين نُشرت هذه الصورة؟",
+    imageLead: "اكتشف الحسابات التي تستخدم صورة معيّنة، مثل صور عملائك أو صورك الشخصية.",
+    imageUrlPlaceholder: "الصق رابط الصورة",
+    or: "أو",
+    dropHint: "اختر صورة من جهازك أو اسحبها هنا",
+    invalidImageUrl: "أدخل رابطًا صحيحًا يبدأ بـ https://",
+    invalidImageFile: "الملف ليس صورة.",
+    noteUrl: "اختر محرك البحث:",
+    noteFile: "عند الضغط على محرك، ننسخ الصورة ونفتح صفحته؛ الصقها هناك بـ Ctrl+V (أو ⌘+V)، أو اسحب الصورة إليها.",
+    copiedImage: "نُسخت الصورة — الصقها في الصفحة المفتوحة",
+    copyFailed: "تعذّر النسخ — اسحب الصورة إلى الصفحة المفتوحة",
+    tipMulti: "ابحث في أكثر من محرك؛ كل محرك يجد نتائج مختلفة.",
+    tipTineye: "TinEye يرتّب النتائج حسب أقدم ظهور للصورة، وهذا مفيد لإثبات أسبقية النشر.",
+    tipEvidence: "وثّق كل نتيجة (رابط + لقطة شاشة + تاريخ) قبل التواصل مع المنصة، فقد يُحذف الحساب.",
+    imagePrivacy: "لا تُرفع الصورة إلى خادمنا؛ تُفتح مباشرة في محرك البحث الذي تختاره.",
     allSitesTitle: "كل المواقع",
     checking: "جارٍ الفحص",
     manualCheck: "تحقق يدويًا",
@@ -105,6 +122,23 @@ const I18N = {
     statusTimeout: "Timed out",
     version: "Version",
     featuredTitle: "Most used platforms",
+    modeUsername: "Username",
+    modeImage: "Reverse image search",
+    imageTitle: "Where has this image been posted?",
+    imageLead: "Find accounts that use a specific photo, such as your clients' photos or your own.",
+    imageUrlPlaceholder: "Paste an image link",
+    or: "or",
+    dropHint: "Choose an image from your device or drop it here",
+    invalidImageUrl: "Enter a valid link starting with https://",
+    invalidImageFile: "That file isn't an image.",
+    noteUrl: "Choose a search engine:",
+    noteFile: "Clicking an engine copies the image and opens its page; paste it there with Ctrl+V (or ⌘+V), or drag the image onto it.",
+    copiedImage: "Image copied — paste it on the page that opened",
+    copyFailed: "Couldn't copy — drag the image onto the page that opened",
+    tipMulti: "Search more than one engine; each finds different results.",
+    tipTineye: "TinEye can sort by the oldest appearance of the image, useful to prove who posted it first.",
+    tipEvidence: "Document every result (link, screenshot, date) before contacting the platform, as accounts may be deleted.",
+    imagePrivacy: "The image is never uploaded to our server; it opens directly in the engine you choose.",
     allSitesTitle: "All sites",
     checking: "Checking",
     manualCheck: "Check manually",
@@ -184,6 +218,10 @@ function applyLang(lang) {
   document.querySelectorAll("[data-i18n-aria]").forEach((el) => el.setAttribute("aria-label", t(el.dataset.i18nAria)));
   if (state.version) els.version.textContent = `${t("version")} ${state.version}`;
   if (!els.formError.hidden) els.formError.textContent = t(els.formError.dataset.key);
+  if (typeof image !== "undefined") {
+    if (!image.error.hidden) image.error.textContent = t(image.error.dataset.key);
+    renderEngines();
+  }
   if (state.run) {
     updateSearchButton();
     updateStats();
@@ -592,6 +630,154 @@ async function exportAs(kind) {
   }
 }
 
+// ---------- Reverse image search ----------
+
+const ENGINES = [
+  { name: "Google Lens", byUrl: (u) => `https://lens.google.com/uploadbyurl?url=${u}`, upload: "https://lens.google.com/" },
+  { name: "Bing", byUrl: (u) => `https://www.bing.com/images/search?view=detailv2&iss=sbi&q=imgurl:${u}`, upload: "https://www.bing.com/visualsearch" },
+  { name: "Yandex", byUrl: (u) => `https://yandex.com/images/search?rpt=imageview&url=${u}`, upload: "https://yandex.com/images/" },
+  { name: "TinEye", byUrl: (u) => `https://tineye.com/search?url=${u}&sort=crawl_date&order=asc`, upload: "https://tineye.com/" },
+];
+
+const image = {
+  panel: $("#image-panel"),
+  usernamePanel: $("#username-panel"),
+  form: $("#image-form"),
+  url: $("#image-url"),
+  error: $("#image-error"),
+  file: $("#image-file"),
+  dropzone: $("#dropzone"),
+  result: $("#image-result"),
+  preview: $("#image-preview"),
+  note: $("#image-note"),
+  engines: $("#engines"),
+  current: null, // { kind: "url", url } or { kind: "file", objectUrl, png }
+};
+
+function setMode(mode) {
+  const isImage = mode === "image";
+  document.querySelectorAll(".mode").forEach((btn) => {
+    const active = btn.dataset.mode === mode;
+    btn.classList.toggle("active", active);
+    btn.setAttribute("aria-selected", String(active));
+  });
+  image.panel.hidden = !isImage;
+  image.usernamePanel.hidden = isImage;
+  document.body.classList.toggle("mode-image", isImage);
+  (isImage ? image.url : els.input).focus();
+}
+
+function showImageError(key) {
+  image.error.dataset.key = key;
+  image.error.textContent = t(key);
+  image.error.hidden = false;
+}
+
+function renderEngines() {
+  const current = image.current;
+  if (!current) return;
+  image.note.textContent = t(current.kind === "url" ? "noteUrl" : "noteFile");
+  const buttons = ENGINES.map((engine) => {
+    const a = document.createElement("a");
+    a.className = "btn btn-ghost engine";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = engine.name;
+    if (current.kind === "url") {
+      a.href = engine.byUrl(encodeURIComponent(current.url));
+    } else {
+      a.href = engine.upload;
+      a.addEventListener("click", () => copyImage(current.png));
+    }
+    return a;
+  });
+  image.engines.replaceChildren(...buttons);
+}
+
+async function copyImage(png) {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+    toast(t("copiedImage"));
+  } catch {
+    toast(t("copyFailed"));
+  }
+}
+
+function toPng(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext("2d").drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("encode"))), "image/png");
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("decode"));
+    };
+    img.src = url;
+  });
+}
+
+function showImage(current) {
+  if (image.current?.objectUrl) URL.revokeObjectURL(image.current.objectUrl);
+  image.current = current;
+  image.error.hidden = true;
+  image.preview.src = current.kind === "url" ? current.url : current.objectUrl;
+  image.result.hidden = false;
+  renderEngines();
+}
+
+async function useFile(file) {
+  if (!file || !file.type.startsWith("image/")) return showImageError("invalidImageFile");
+  try {
+    const png = await toPng(file);
+    image.url.value = "";
+    showImage({ kind: "file", objectUrl: URL.createObjectURL(file), png });
+  } catch {
+    showImageError("invalidImageFile");
+  }
+}
+
+document.querySelectorAll(".mode").forEach((btn) => btn.addEventListener("click", () => setMode(btn.dataset.mode)));
+
+image.form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  let url;
+  try {
+    url = new URL(image.url.value.trim());
+  } catch {
+    return showImageError("invalidImageUrl");
+  }
+  if (url.protocol !== "https:" && url.protocol !== "http:") return showImageError("invalidImageUrl");
+  showImage({ kind: "url", url: url.href });
+});
+
+image.url.addEventListener("input", () => (image.error.hidden = true));
+image.file.addEventListener("change", () => useFile(image.file.files[0]));
+["dragenter", "dragover"].forEach((type) =>
+  image.dropzone.addEventListener(type, (event) => {
+    event.preventDefault();
+    image.dropzone.classList.add("over");
+  })
+);
+["dragleave", "drop"].forEach((type) =>
+  image.dropzone.addEventListener(type, () => image.dropzone.classList.remove("over"))
+);
+image.dropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  useFile(event.dataTransfer.files[0]);
+});
+document.addEventListener("paste", (event) => {
+  if (image.panel.hidden) return;
+  const file = [...(event.clipboardData?.files || [])].find((f) => f.type.startsWith("image/"));
+  if (file) useFile(file);
+});
+
 // ---------- Wiring ----------
 
 els.form.addEventListener("submit", (event) => {
@@ -658,6 +844,11 @@ async function init() {
     els.version.textContent = `${t("version")} ${data.version}`;
   } catch {
     showError("loadFailed");
+    return;
+  }
+
+  if (new URLSearchParams(location.search).get("mode") === "image") {
+    setMode("image");
     return;
   }
 
