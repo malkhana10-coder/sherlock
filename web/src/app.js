@@ -68,6 +68,7 @@ const I18N = {
     tipMulti: "ابحث في أكثر من محرك؛ كل محرك يجد نتائج مختلفة.",
     tipTineye: "TinEye يرتّب النتائج حسب أقدم ظهور للصورة، وهذا مفيد لإثبات أسبقية النشر.",
     tipEvidence: "وثّق كل نتيجة (رابط + لقطة شاشة + تاريخ) قبل التواصل مع المنصة، فقد يُحذف الحساب.",
+    logout: "تسجيل الخروج",
     imagePrivacy: "لا تُرفع الصورة إلى خادمنا؛ تُفتح مباشرة في محرك البحث الذي تختاره.",
     allSitesTitle: "كل المواقع",
     checking: "جارٍ الفحص",
@@ -138,6 +139,7 @@ const I18N = {
     tipMulti: "Search more than one engine; each finds different results.",
     tipTineye: "TinEye can sort by the oldest appearance of the image, useful to prove who posted it first.",
     tipEvidence: "Document every result (link, screenshot, date) before contacting the platform, as accounts may be deleted.",
+    logout: "Sign out",
     imagePrivacy: "The image is never uploaded to our server; it opens directly in the engine you choose.",
     allSitesTitle: "All sites",
     checking: "Checking",
@@ -268,6 +270,11 @@ async function checkBatch(username, names, signal) {
       body: JSON.stringify({ username, sites: names }),
       signal,
     });
+    if (res.status === 401) {
+      // Session expired: reload to show the login page.
+      location.reload();
+      return null;
+    }
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();
     return body.results;
