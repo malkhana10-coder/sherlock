@@ -10,8 +10,10 @@ using the same detection rules as the CLI.
 1. In Netlify, choose **Add new site → Import an existing project** and pick this repository.
 2. Leave the build settings empty — `netlify.toml` already sets them
    (`node web/build.mjs`, publish `web/dist`, functions `netlify/functions`).
-3. Under **Project configuration → Environment variables**, add `SITE_PASSWORD`
-   with the password users must enter. Until it is set, the site stays locked.
+3. Optionally, under **Project configuration → Environment variables**, add
+   `SITE_PASSWORD` to choose the password users must enter. Without it, the
+   built-in password (stored only as a hash in `netlify/edge-functions/auth.js`)
+   is used.
 4. Click **Deploy** (or **Trigger deploy** after adding the variable).
 
 Or with the Netlify CLI:
